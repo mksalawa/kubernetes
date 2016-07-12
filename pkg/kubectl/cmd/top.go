@@ -94,7 +94,7 @@ func NewCmdTop(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 	}
 	cmd.Flags().StringP("selector", "l", "", "Selector (label query) to filter on")
 	cmd.Flags().Bool("containers", false, "If present, print usage of containers within a pod. Ignored if the requested resource type is \"node\".")
-	// TODO: add support for --all-namespaces
+	cmd.Flags().Bool("all-namespaces", false, "If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.")
 	cmdutil.AddInclude3rdPartyFlags(cmd)
 	return cmd
 }
@@ -104,6 +104,7 @@ func RunTop(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []string
 		fmt.Fprint(out, "You must specify the type of resource to get.")
 		return cmdutil.UsageError(cmd, "Required resource not specified.")
 	}
+	allNamespaces := cmdutil.GetFlagBool(cmd, "all-namespaces")
 	selector := cmdutil.GetFlagString(cmd, "selector")
 	params := map[string]string{"labelSelector": selector}
 	printContainers := cmdutil.GetFlagBool(cmd, "containers")
@@ -116,7 +117,7 @@ func RunTop(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []string
 		return err
 	}
 
-	err = PrintMetrics(out, cli, cmdNamespace, false, printContainers, params, args)
+	err = PrintMetrics(out, cli, cmdNamespace, allNamespaces, printContainers, params, args)
 	if err != nil {
 		return err
 	}
@@ -145,7 +146,7 @@ func PrintMetrics(out io.Writer, cli *client.Client, cmdNamespace string, allNam
 		}
 		return printer.PrintNodeMetrics(metrics)
 	case api.Kind("Pod"):
-		metrics, err := heapsterClient.GetPodMetrics(cmdNamespace, name, params)
+		metrics, err := heapsterClient.GetPodMetrics(cmdNamespace, name, allNamespaces, params)
 		if err != nil {
 			return err
 		}

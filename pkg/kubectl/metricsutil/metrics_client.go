@@ -22,6 +22,7 @@ import (
 
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	metrics_api "k8s.io/heapster/metrics/apis/metrics/v1alpha1"
+	"k8s.io/kubernetes/pkg/api"
 )
 
 const (
@@ -67,7 +68,6 @@ func (cli *HeapsterMetricsClient) GetNodeMetrics(nodeName string, params map[str
 	if err != nil {
 		return []metrics_api.NodeMetrics{}, err
 	}
-
 	metrics := make([]metrics_api.NodeMetrics, 0)
 	if nodeName == "" {
 		err = json.Unmarshal(resultRaw, &metrics)
@@ -87,29 +87,45 @@ func (cli *HeapsterMetricsClient) GetNodeMetrics(nodeName string, params map[str
 	return metrics, nil
 }
 
-func (cli *HeapsterMetricsClient) GetPodMetrics(namespace string, podName string, params map[string]string) ([]metrics_api.PodMetrics, error) {
-	resultRaw, err := GetHeapsterMetrics(cli, PodMetricsUrl(namespace, podName), params)
-	if err != nil {
-		return []metrics_api.PodMetrics{}, err
-	}
-
-	metrics := make([]metrics_api.PodMetrics, 0)
-	if podName == "" {
-		err = json.Unmarshal(resultRaw, &metrics)
+func (cli *HeapsterMetricsClient) GetPodMetrics(namespace string, podName string, allNamespaces bool, params map[string]string) ([]metrics_api.PodMetrics, error) {
+	namespaces := make([]string, 0)
+	if allNamespaces {
+		list, err := cli.Client.Namespaces().List(api.ListOptions{})
 		if err != nil {
-			fmt.Errorf("failed to unmarshall heapster response: %v", err)
 			return []metrics_api.PodMetrics{}, err
+		}
+		for _, ns := range list.Items {
+			namespaces = append(namespaces, ns.Name)
 		}
 	} else {
-		var singleMetric metrics_api.PodMetrics
-		err = json.Unmarshal(resultRaw, &singleMetric)
+		namespaces = append(namespaces, namespace)
+	}
+
+	allMetrics := make([]metrics_api.PodMetrics, 0)
+	for _, ns := range namespaces {
+		resultRaw, err := GetHeapsterMetrics(cli, PodMetricsUrl(ns, podName), params)
 		if err != nil {
-			fmt.Errorf("failed to unmarshall heapster response: %v", err)
 			return []metrics_api.PodMetrics{}, err
 		}
-		metrics = append(metrics, singleMetric)
+		if podName == "" {
+			metrics := make([]metrics_api.PodMetrics, 0)
+			err = json.Unmarshal(resultRaw, &metrics)
+			if err != nil {
+				fmt.Errorf("failed to unmarshall heapster response: %v", err)
+				return []metrics_api.PodMetrics{}, err
+			}
+			allMetrics = append(allMetrics, metrics...)
+		} else {
+			var singleMetric metrics_api.PodMetrics
+			err = json.Unmarshal(resultRaw, &singleMetric)
+			if err != nil {
+				fmt.Errorf("failed to unmarshall heapster response: %v", err)
+				return []metrics_api.PodMetrics{}, err
+			}
+			allMetrics = append(allMetrics, singleMetric)
+		}
 	}
-	return metrics, nil
+	return allMetrics, nil
 }
 
 func GetHeapsterMetrics(cli *HeapsterMetricsClient, path string, params map[string]string) ([]byte, error) {
