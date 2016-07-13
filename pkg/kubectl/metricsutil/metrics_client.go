@@ -17,20 +17,20 @@ limitations under the License.
 package metricsutil
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 
-	client "k8s.io/kubernetes/pkg/client/unversioned"
 	metrics_api "k8s.io/heapster/metrics/apis/metrics/v1alpha1"
 	"k8s.io/kubernetes/pkg/api"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
 )
 
 const (
-	MetricsRoot = "/apis/metrics/v1alpha1/"
+	MetricsRoot              = "/apis/metrics/v1alpha1/"
 	DefaultHeapsterNamespace = "kube-system"
-	DefaultHeapsterScheme = "http"
-	DefaultHeapsterService = "heapster"
-	DefaultHeapsterPort = "" // use the first exposed port on the service
+	DefaultHeapsterScheme    = "http"
+	DefaultHeapsterService   = "heapster"
+	DefaultHeapsterPort      = "" // use the first exposed port on the service
 )
 
 type HeapsterMetricsClient struct {
@@ -72,15 +72,13 @@ func (cli *HeapsterMetricsClient) GetNodeMetrics(nodeName string, params map[str
 	if nodeName == "" {
 		err = json.Unmarshal(resultRaw, &metrics)
 		if err != nil {
-			fmt.Errorf("failed to unmarshall heapster response: %v", err)
-			return []metrics_api.NodeMetrics{}, err
+			return []metrics_api.NodeMetrics{}, fmt.Errorf("failed to unmarshall heapster response: %v", err)
 		}
 	} else {
 		var singleMetric metrics_api.NodeMetrics
 		err = json.Unmarshal(resultRaw, &singleMetric)
 		if err != nil {
-			fmt.Errorf("failed to unmarshall heapster response: %v", err)
-			return []metrics_api.NodeMetrics{}, err
+			return []metrics_api.NodeMetrics{}, fmt.Errorf("failed to unmarshall heapster response: %v", err)
 		}
 		metrics = append(metrics, singleMetric)
 	}
@@ -111,16 +109,14 @@ func (cli *HeapsterMetricsClient) GetPodMetrics(namespace string, podName string
 			metrics := make([]metrics_api.PodMetrics, 0)
 			err = json.Unmarshal(resultRaw, &metrics)
 			if err != nil {
-				fmt.Errorf("failed to unmarshall heapster response: %v", err)
-				return []metrics_api.PodMetrics{}, err
+				return []metrics_api.PodMetrics{}, fmt.Errorf("failed to unmarshall heapster response: %v", err)
 			}
 			allMetrics = append(allMetrics, metrics...)
 		} else {
 			var singleMetric metrics_api.PodMetrics
 			err = json.Unmarshal(resultRaw, &singleMetric)
 			if err != nil {
-				fmt.Errorf("failed to unmarshall heapster response: %v", err)
-				return []metrics_api.PodMetrics{}, err
+				return []metrics_api.PodMetrics{}, fmt.Errorf("failed to unmarshall heapster response: %v", err)
 			}
 			allMetrics = append(allMetrics, singleMetric)
 		}

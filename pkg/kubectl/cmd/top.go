@@ -24,11 +24,11 @@ import (
 
 	"github.com/renstrom/dedent"
 	"github.com/spf13/cobra"
-	"k8s.io/kubernetes/pkg/kubectl"
-	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
+	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/kubectl"
+	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/metricsutil"
 )
 
@@ -125,7 +125,7 @@ func RunTop(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []string
 }
 
 func PrintMetrics(out io.Writer, cli *client.Client, cmdNamespace string, allNamespaces bool,
-		  printContainers bool, params map[string]string, args []string) error {
+	printContainers bool, params map[string]string, args []string) error {
 	resType, err := GetResourceKind(args[0])
 	if err != nil {
 		return err

@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"io"
 
-	"k8s.io/kubernetes/pkg/kubectl"
 	metrics_api "k8s.io/heapster/metrics/apis/metrics/v1alpha1"
-	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/api/resource"
+	"k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/kubernetes/pkg/kubectl"
 	"time"
 )
 
@@ -34,12 +34,12 @@ var (
 		v1.ResourceStorage,
 	}
 	NodeColumns = []string{"NAME", "CPU", "MEMORY", "STORAGE", "TIMESTAMP"}
-	PodColumns = []string{"NAMESPACE", "NAME", "CPU", "MEMORY", "STORAGE", "TIMESTAMP"}
+	PodColumns  = []string{"NAMESPACE", "NAME", "CPU", "MEMORY", "STORAGE", "TIMESTAMP"}
 )
 
 type ResourceMetricsInfo struct {
 	Namespace string
-	Name 	  string
+	Name      string
 	Metrics   v1.ResourceList
 	Timestamp string
 }
@@ -48,7 +48,7 @@ type TopCmdPrinter struct {
 	out io.Writer
 }
 
-func NewTopCmdPrinter(out io.Writer) (TopCmdPrinter) {
+func NewTopCmdPrinter(out io.Writer) TopCmdPrinter {
 	return TopCmdPrinter{out: out}
 }
 
@@ -151,7 +151,7 @@ func PrintSingleResourceUsage(out io.Writer, resourceType v1.ResourceName, quant
 	case v1.ResourceCPU:
 		fmt.Fprintf(out, "%vm", quantity.MilliValue())
 	case v1.ResourceMemory, v1.ResourceStorage:
-		fmt.Fprintf(out, "%v Mi", quantity.Value() / (1024 * 1024))
+		fmt.Fprintf(out, "%v Mi", quantity.Value()/(1024*1024))
 	default:
 		fmt.Fprintf(out, "%v", quantity.Value())
 	}
