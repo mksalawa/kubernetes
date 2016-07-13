@@ -86,6 +86,8 @@ func (cli *HeapsterMetricsClient) GetNodeMetrics(nodeName string, params map[str
 }
 
 func (cli *HeapsterMetricsClient) GetPodMetrics(namespace string, podName string, allNamespaces bool, params map[string]string) ([]metrics_api.PodMetrics, error) {
+	// TODO: extend Master Metrics API with getting pods from all namespaces
+	// instead of aggregating the results here
 	namespaces := make([]string, 0)
 	if allNamespaces {
 		list, err := cli.Client.Namespaces().List(api.ListOptions{})
