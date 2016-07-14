@@ -46,27 +46,37 @@ var (
 
 	topExample = dedent.Dedent(`
 		  # Show metrics for all nodes
-		  kubectl top node
+		  kubectl top nodes
 
 		  # Show metrics for a given node
 		  kubectl top node NODE_NAME
 
 		  # Show metrics for all pods in the given namespace
-		  kubectl top pod --namespace=NAMESPACE
+		  kubectl top pods --namespace=NAMESPACE
 
 		  # Show metrics for a given pod and its containers
 		  kubectl top pod POD_NAME --containers
 
 		  # Show metrics for the pods defined by label name=myLabel
-		  kubectl top pod -l name=myLabel`)
+		  kubectl top pods -l name=myLabel`)
 )
 
-var HandledResources []unversioned.GroupKind = []unversioned.GroupKind{
-	api.Kind("Pod"),
-	api.Kind("Node"),
+type MetricsCmdParams struct {
+	namespace string
+	name string
+	allNamespaces bool
+	printContainers bool
+	params map[string]string
+	client *metricsutil.HeapsterMetricsClient
+	printer *metricsutil.TopCmdPrinter
 }
 
-var GetResourcesHandledByTop = func() []string {
+var HandledResources []unversioned.GroupKind = []unversioned.GroupKind{
+	api.Kind("Node"),
+	api.Kind("Pod"),
+}
+
+func GetResourcesHandledByTop() []string {
 	keys := make([]string, 0)
 	for _, k := range HandledResources {
 		resource := strings.ToLower(k.Kind)
@@ -81,7 +91,7 @@ func NewCmdTop(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 	argAliases := kubectl.ResourceAliases(validArgs)
 
 	cmd := &cobra.Command{
-		Use:     "top TYPE [NAME] [flags]",
+		Use:     "top TYPE [NAME | -l label] [flags]",
 		Short:   "Display Resource (CPU/Memory/Storage) usage of nodes or pods",
 		Long:    topLong,
 		Example: topExample,
@@ -134,33 +144,61 @@ func PrintMetrics(out io.Writer, cli *client.Client, cmdNamespace string, allNam
 	if len(args) > 1 {
 		name = args[1]
 	}
-
 	heapsterClient := metricsutil.DefaultHeapsterMetricsClient(cli)
 	printer := metricsutil.NewTopCmdPrinter(out)
 
+	metricParams := &MetricsCmdParams{
+		namespace : cmdNamespace,
+		name : name,
+		allNamespaces : allNamespaces,
+		printContainers : printContainers,
+		params : params,
+		client : heapsterClient,
+		printer : printer,
+	}
+
 	switch resType {
 	case api.Kind("Node"):
-		metrics, err := heapsterClient.GetNodeMetrics(name, params)
-		if err != nil {
-			return err
-		}
-		return printer.PrintNodeMetrics(metrics)
+		return GetAndPrintNodeMetrics(metricParams)
 	case api.Kind("Pod"):
-		metrics, err := heapsterClient.GetPodMetrics(cmdNamespace, name, allNamespaces, params)
-		if err != nil {
-			return err
-		}
-		return printer.PrintPodMetrics(metrics, printContainers)
+		return GetAndPrintPodMetrics(metricParams)
 	}
 	return errors.New("resource not supported")
 }
 
-var GetResourceKind = func(resourceType string) (unversioned.GroupKind, error) {
-	switch resourceType {
-	case "node", "nodes":
-		return api.Kind("Node"), nil
-	case "pod", "pods":
-		return api.Kind("Pod"), nil
+func GetResourceKind(resourceType string) (unversioned.GroupKind, error) {
+	if kind, found := AliasesToKind[resourceType]; found {
+		return kind, nil
 	}
 	return unversioned.GroupKind{}, errors.New("unknown resource requested")
+}
+
+var AliasesToKind map[string]unversioned.GroupKind = GetAliasesToKind(HandledResources)
+
+func GetAliasesToKind(resources []unversioned.GroupKind) map[string]unversioned.GroupKind {
+	aliasesToKind := make(map[string]unversioned.GroupKind, 0)
+	for _, res := range resources {
+		resName := strings.ToLower(res.Kind)
+		aliasesToKind[resName] = res
+		for _, alias := range kubectl.ResourceAliases([]string{resName}) {
+			aliasesToKind[alias] = res
+		}
+	}
+	return aliasesToKind
+}
+
+func GetAndPrintNodeMetrics(pp *MetricsCmdParams) error {
+	metrics, err := pp.client.GetNodeMetrics(pp.name, pp.params)
+	if err != nil {
+		return err
+	}
+	return pp.printer.PrintNodeMetrics(metrics)
+}
+
+func GetAndPrintPodMetrics(pp *MetricsCmdParams) error {
+	metrics, err := pp.client.GetPodMetrics(pp.namespace, pp.name, pp.allNamespaces, pp.params)
+	if err != nil {
+		return err
+	}
+	return pp.printer.PrintPodMetrics(metrics, pp.printContainers)
 }

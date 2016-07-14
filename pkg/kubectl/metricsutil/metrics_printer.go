@@ -48,8 +48,8 @@ type TopCmdPrinter struct {
 	out io.Writer
 }
 
-func NewTopCmdPrinter(out io.Writer) TopCmdPrinter {
-	return TopCmdPrinter{out: out}
+func NewTopCmdPrinter(out io.Writer) *TopCmdPrinter {
+	return &TopCmdPrinter{out: out}
 }
 
 func (printer *TopCmdPrinter) PrintNodeMetrics(metrics []metrics_api.NodeMetrics) error {
