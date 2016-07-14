@@ -62,13 +62,13 @@ var (
 )
 
 type MetricsCmdParams struct {
-	namespace string
-	name string
-	allNamespaces bool
+	namespace       string
+	name            string
+	allNamespaces   bool
 	printContainers bool
-	params map[string]string
-	client *metricsutil.HeapsterMetricsClient
-	printer *metricsutil.TopCmdPrinter
+	params          map[string]string
+	client          *metricsutil.HeapsterMetricsClient
+	printer         *metricsutil.TopCmdPrinter
 }
 
 var HandledResources []unversioned.GroupKind = []unversioned.GroupKind{
@@ -148,13 +148,13 @@ func PrintMetrics(out io.Writer, cli *client.Client, cmdNamespace string, allNam
 	printer := metricsutil.NewTopCmdPrinter(out)
 
 	metricParams := &MetricsCmdParams{
-		namespace : cmdNamespace,
-		name : name,
-		allNamespaces : allNamespaces,
-		printContainers : printContainers,
-		params : params,
-		client : heapsterClient,
-		printer : printer,
+		namespace:       cmdNamespace,
+		name:            name,
+		allNamespaces:   allNamespaces,
+		printContainers: printContainers,
+		params:          params,
+		client:          heapsterClient,
+		printer:         printer,
 	}
 
 	switch resType {
