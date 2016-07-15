@@ -25,11 +25,13 @@ import (
 	"github.com/renstrom/dedent"
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/kubectl"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/metricsutil"
+	"sort"
 )
 
 // TopOptions is the start of the data required to perform the operation. As new fields are added, add them here instead of
@@ -61,6 +63,14 @@ var (
 		  kubectl top pods -l name=myLabel`)
 )
 
+var AcceptedSortingValues = func() string {
+	description := ""
+	for _, r := range metricsutil.MeasuredResources {
+		description += string(r)
+	}
+	return description
+}
+
 type MetricsCmdParams struct {
 	namespace       string
 	name            string
@@ -69,6 +79,7 @@ type MetricsCmdParams struct {
 	params          map[string]string
 	client          *metricsutil.HeapsterMetricsClient
 	printer         *metricsutil.TopCmdPrinter
+	sortBy          string
 }
 
 var HandledResources []unversioned.GroupKind = []unversioned.GroupKind{
@@ -103,6 +114,7 @@ func NewCmdTop(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 		ArgAliases: argAliases,
 	}
 	cmd.Flags().StringP("selector", "l", "", "Selector (label query) to filter on")
+	cmd.Flags().String("sort-by", "", "If non-empty, sort results using this field. Accepted values are: " + AcceptedSortingValues())
 	cmd.Flags().Bool("containers", false, "If present, print usage of containers within a pod. Ignored if the requested resource type is \"node\".")
 	cmd.Flags().Bool("all-namespaces", false, "If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.")
 	cmdutil.AddInclude3rdPartyFlags(cmd)
@@ -118,6 +130,7 @@ func RunTop(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []string
 	selector := cmdutil.GetFlagString(cmd, "selector")
 	params := map[string]string{"labelSelector": selector}
 	printContainers := cmdutil.GetFlagBool(cmd, "containers")
+	sortBy := cmdutil.GetFlagString(cmd, "sort-by")
 	cmdNamespace, _, err := f.DefaultNamespace()
 	if err != nil {
 		return err
@@ -127,7 +140,7 @@ func RunTop(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []string
 		return err
 	}
 
-	err = PrintMetrics(out, cli, cmdNamespace, allNamespaces, printContainers, params, args)
+	err = PrintMetrics(out, cli, cmdNamespace, allNamespaces, printContainers, sortBy, params, args)
 	if err != nil {
 		return err
 	}
@@ -135,7 +148,7 @@ func RunTop(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []string
 }
 
 func PrintMetrics(out io.Writer, cli *client.Client, cmdNamespace string, allNamespaces bool,
-	printContainers bool, params map[string]string, args []string) error {
+	printContainers bool, sortBy string, params map[string]string, args []string) error {
 	resType, err := GetResourceKind(args[0])
 	if err != nil {
 		return err
@@ -155,6 +168,7 @@ func PrintMetrics(out io.Writer, cli *client.Client, cmdNamespace string, allNam
 		params:          params,
 		client:          heapsterClient,
 		printer:         printer,
+		sortBy:          sortBy,
 	}
 
 	switch resType {
@@ -192,7 +206,15 @@ func GetAndPrintNodeMetrics(pp *MetricsCmdParams) error {
 	if err != nil {
 		return err
 	}
-	return pp.printer.PrintNodeMetrics(metrics)
+
+	nodeMetrics := make([]metricsutil.GeneralMetricsContainer, 0)
+	for _, m := range metrics {
+		nodeMetrics = append(nodeMetrics, metricsutil.NewNodeMetricsContainer(m))
+	}
+	sortable := metricsutil.NewSortableMetrics(nodeMetrics, v1.ResourceMemory)
+	sort.Sort(sort.Reverse(sortable))
+
+	return pp.printer.PrintNodeMetrics(sortable.GetData())
 }
 
 func GetAndPrintPodMetrics(pp *MetricsCmdParams) error {
@@ -200,5 +222,34 @@ func GetAndPrintPodMetrics(pp *MetricsCmdParams) error {
 	if err != nil {
 		return err
 	}
-	return pp.printer.PrintPodMetrics(metrics, pp.printContainers)
+	podMetrics := make([]metricsutil.GeneralMetricsContainer, 0)
+	for _, m := range metrics {
+		podMetrics = append(podMetrics, metricsutil.NewPodMetricsContainer(m))
+	}
+
+	var field v1.ResourceName
+	if pp.sortBy == "" {
+		field = v1.ResourceName("name")
+	} else {
+		field = v1.ResourceName(pp.sortBy)
+	}
+	sortable := metricsutil.NewSortableMetrics(podMetrics, field)
+
+	if pp.sortBy == "" {
+		sort.Sort(sortable)
+	} else {
+		sort.Sort(sort.Reverse(sortable))
+	}
+
+	for _, p := range sortable.GetData() {
+		containers := p.(metricsutil.PodMetricsContainer).GetContainers()
+		if len(containers) > 1 {
+			metrics := metricsutil.NewSortableMetrics(containers, field)
+			sortContainers := metrics
+			sort.Sort(sort.Reverse(sortContainers))
+		}
+	}
+
+	err = pp.printer.PrintPodMetrics(sortable.GetData(), pp.printContainers)
+	return err
 }
