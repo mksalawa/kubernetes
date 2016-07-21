@@ -435,7 +435,7 @@ func PodFitsResources(pod *api.Pod, meta interface{}, nodeInfo *schedulercache.N
 	var predicateFails []algorithm.PredicateFailureReason
 	allowedPodNumber := nodeInfo.AllowedPodNumber()
 	if len(nodeInfo.Pods())+1 > allowedPodNumber {
-		predicateFails = append(predicateFails, newInsufficientResourceError(podCountResourceName, 1, int64(len(nodeInfo.Pods())), int64(allowedPodNumber)))
+		predicateFails = append(predicateFails, NewInsufficientResourceError(api.ResourcePods, 1, int64(len(nodeInfo.Pods())), int64(allowedPodNumber)))
 	}
 
 	var podRequest *schedulercache.Resource
@@ -451,13 +451,13 @@ func PodFitsResources(pod *api.Pod, meta interface{}, nodeInfo *schedulercache.N
 
 	allocatable := nodeInfo.AllocatableResource()
 	if allocatable.MilliCPU < podRequest.MilliCPU+nodeInfo.RequestedResource().MilliCPU {
-		predicateFails = append(predicateFails, newInsufficientResourceError(cpuResourceName, podRequest.MilliCPU, nodeInfo.RequestedResource().MilliCPU, allocatable.MilliCPU))
+		predicateFails = append(predicateFails, NewInsufficientResourceError(api.ResourceCPU, podRequest.MilliCPU, nodeInfo.RequestedResource().MilliCPU, allocatable.MilliCPU))
 	}
 	if allocatable.Memory < podRequest.Memory+nodeInfo.RequestedResource().Memory {
-		predicateFails = append(predicateFails, newInsufficientResourceError(memoryResourceName, podRequest.Memory, nodeInfo.RequestedResource().Memory, allocatable.Memory))
+		predicateFails = append(predicateFails, NewInsufficientResourceError(api.ResourceMemory, podRequest.Memory, nodeInfo.RequestedResource().Memory, allocatable.Memory))
 	}
 	if allocatable.NvidiaGPU < podRequest.NvidiaGPU+nodeInfo.RequestedResource().NvidiaGPU {
-		predicateFails = append(predicateFails, newInsufficientResourceError(nvidiaGpuResourceName, podRequest.NvidiaGPU, nodeInfo.RequestedResource().NvidiaGPU, allocatable.NvidiaGPU))
+		predicateFails = append(predicateFails, NewInsufficientResourceError(api.ResourceNvidiaGPU, podRequest.NvidiaGPU, nodeInfo.RequestedResource().NvidiaGPU, allocatable.NvidiaGPU))
 	}
 	if glog.V(10) {
 		// We explicitly don't do glog.V(10).Infof() to avoid computing all the parameters if this is
@@ -1063,18 +1063,18 @@ func CheckNodeMemoryPressurePredicate(pod *api.Pod, meta interface{}, nodeInfo *
 
 // CheckNodeDiskPressurePredicate checks if a pod can be scheduled on a node
 // reporting disk pressure condition.
-func CheckNodeDiskPressurePredicate(pod *api.Pod, meta interface{}, nodeInfo *schedulercache.NodeInfo) (bool, error) {
+func CheckNodeDiskPressurePredicate(pod *api.Pod, meta interface{}, nodeInfo *schedulercache.NodeInfo) (bool, []algorithm.PredicateFailureReason, error) {
 	node := nodeInfo.Node()
 	if node == nil {
-		return false, fmt.Errorf("node not found")
+		return false, nil, fmt.Errorf("node not found")
 	}
 
 	// is node under presure?
 	for _, cond := range node.Status.Conditions {
 		if cond.Type == api.NodeDiskPressure && cond.Status == api.ConditionTrue {
-			return false, ErrNodeUnderDiskPressure
+			return false, []algorithm.PredicateFailureReason{ErrNodeUnderDiskPressure}, nil
 		}
 	}
 
-	return true, nil
+	return true, nil, nil
 }

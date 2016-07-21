@@ -142,8 +142,8 @@ func TestPodFitsResources(t *testing.T) {
 			fits: false,
 			test: "too many resources fails",
 			reasons: []algorithm.PredicateFailureReason{
-				newInsufficientResourceError(cpuResourceName, 1, 10, 10),
-				newInsufficientResourceError(memoryResourceName, 1, 20, 20),
+				NewInsufficientResourceError(api.ResourceCPU, 1, 10, 10),
+				NewInsufficientResourceError(api.ResourceMemory, 1, 20, 20),
 			},
 		},
 		{
@@ -152,7 +152,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 8, Memory: 19})),
 			fits:    false,
 			test:    "too many resources fails due to init container cpu",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(cpuResourceName, 3, 8, 10)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourceCPU, 3, 8, 10)},
 		},
 		{
 			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 3, Memory: 1}, schedulercache.Resource{MilliCPU: 2, Memory: 1}),
@@ -160,7 +160,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 8, Memory: 19})),
 			fits:    false,
 			test:    "too many resources fails due to highest init container cpu",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(cpuResourceName, 3, 8, 10)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourceCPU, 3, 8, 10)},
 		},
 		{
 			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 1, Memory: 3}),
@@ -168,7 +168,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 9, Memory: 19})),
 			fits:    false,
 			test:    "too many resources fails due to init container memory",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(memoryResourceName, 3, 19, 20)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourceMemory, 3, 19, 20)},
 		},
 		{
 			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 1, Memory: 3}, schedulercache.Resource{MilliCPU: 1, Memory: 2}),
@@ -176,7 +176,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 9, Memory: 19})),
 			fits:    false,
 			test:    "too many resources fails due to highest init container memory",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(memoryResourceName, 3, 19, 20)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourceMemory, 3, 19, 20)},
 		},
 		{
 			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}), schedulercache.Resource{MilliCPU: 1, Memory: 1}),
@@ -208,7 +208,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 9, Memory: 5})),
 			fits:    false,
 			test:    "one resource memory fits",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(cpuResourceName, 2, 9, 10)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourceCPU, 2, 9, 10)},
 		},
 		{
 			pod: newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 2}),
@@ -216,7 +216,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 19})),
 			fits:    false,
 			test:    "one resource cpu fits",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(memoryResourceName, 2, 19, 20)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourceMemory, 2, 19, 20)},
 		},
 		{
 			pod: newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 1}),
@@ -265,7 +265,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 10, Memory: 20})),
 			fits:    false,
 			test:    "even without specified resources predicate fails when there's no space for additional pod",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(podCountResourceName, 1, 1, 1)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourcePods, 1, 1, 1)},
 		},
 		{
 			pod: newResourcePod(schedulercache.Resource{MilliCPU: 1, Memory: 1}),
@@ -273,7 +273,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 5})),
 			fits:    false,
 			test:    "even if both resources fit predicate fails when there's no space for additional pod",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(podCountResourceName, 1, 1, 1)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourcePods, 1, 1, 1)},
 		},
 		{
 			pod: newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 1}),
@@ -281,7 +281,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 19})),
 			fits:    false,
 			test:    "even for equal edge case predicate fails when there's no space for additional pod",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(podCountResourceName, 1, 1, 1)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourcePods, 1, 1, 1)},
 		},
 		{
 			pod: newResourceInitPod(newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 1}), schedulercache.Resource{MilliCPU: 5, Memory: 1}),
@@ -289,7 +289,7 @@ func TestPodFitsResources(t *testing.T) {
 				newResourcePod(schedulercache.Resource{MilliCPU: 5, Memory: 19})),
 			fits:    false,
 			test:    "even for equal edge case predicate fails when there's no space for additional pod due to init container",
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(podCountResourceName, 1, 1, 1)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourcePods, 1, 1, 1)},
 		},
 	}
 	for _, test := range notEnoughPodsTests {
@@ -1734,8 +1734,8 @@ func TestRunGeneralPredicates(t *testing.T) {
 			fits: false,
 			wErr: nil,
 			reasons: []algorithm.PredicateFailureReason{
-				newInsufficientResourceError(cpuResourceName, 8, 5, 10),
-				newInsufficientResourceError(memoryResourceName, 10, 19, 20),
+				NewInsufficientResourceError(api.ResourceCPU, 8, 5, 10),
+				NewInsufficientResourceError(api.ResourceMemory, 10, 19, 20),
 			},
 			test: "not enough cpu and memory resource",
 		},
@@ -1756,7 +1756,7 @@ func TestRunGeneralPredicates(t *testing.T) {
 			node:    &api.Node{Status: api.NodeStatus{Capacity: makeResources(10, 20, 1, 32).Capacity, Allocatable: makeAllocatableResources(10, 20, 1, 32)}},
 			fits:    false,
 			wErr:    nil,
-			reasons: []algorithm.PredicateFailureReason{newInsufficientResourceError(nvidiaGpuResourceName, 1, 1, 1)},
+			reasons: []algorithm.PredicateFailureReason{NewInsufficientResourceError(api.ResourceNvidiaGPU, 1, 1, 1)},
 			test:    "not enough GPU resource",
 		},
 		{
