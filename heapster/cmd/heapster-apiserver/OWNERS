@@ -1,0 +1,28 @@
+/bin/sh -c /usr/local/bin/kube-apiserver --v=2  --
+cloud-config=/etc/gce.conf --address=127.0.0.1 --allow-privileged=true --authorization-policy-file=/etc/srv/kuberne
+tes/abac-authz-policy.jsonl --basic-auth-file=/etc/srv/kubernetes/basic_auth.csv --cloud-provider=gce --client-ca-f
+ile=/etc/srv/kubernetes/ca.crt --etcd-servers=http://127.0.0.1:4001 --etcd-servers-overrides=/events#http://127.0.0
+.1:4002 --secure-port=443 --tls-cert-file=/etc/srv/kubernetes/server.cert --tls-private-key-file=/etc/srv/kubernete
+s/server.key --token-auth-file=/etc/srv/kubernetes/known_tokens.csv --service-cluster-ip-range=10.0.0.0/16 --admiss
+ion-control=NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,ResourceQuota --authorization-mode=
+ABAC --allow-privileged=true 1>>/var/log/kube-apiserver.log 2>&1
+
+
+--v=2
+--cloud-config=gce.conf
+--address=127.0.0.1
+--allow-privileged=true
+--authorization-policy-file=abac-authz-policy.jsonl
+--basic-auth-file=basic_auth.csv
+--cloud-provider=gce
+--client-ca-file=ca.crt
+--etcd-servers=http://192.158.29.134:4001
+--etcd-servers-overrides=/events#http://192.158.29.134:4002
+--token-auth-file=known_tokens.csv
+--service-cluster-ip-range=10.0.0.0/16
+--admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,ResourceQuota
+--authorization-mode=ABAC
+--allow-privileged=true
+
+1>>kube-apiserver.log
+2>&1
