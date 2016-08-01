@@ -232,7 +232,7 @@ release:
 #   make release-skip-tests
 .PHONY: release-skip-tests quick-release
 release-skip-tests quick-release:
-	KUBE_RELEASE_RUN_TESTS=n KUBE_FASTBUILD=true build/release.sh
+	KUBE_RELEASE_RUN_TESTS=n KUBE_DOCKER_REGISTRY=gcr.io/google.com:magorzata-dev-1362 KUBE_FASTBUILD=true build/release.sh
 
 # Cross-compile for all platforms
 #

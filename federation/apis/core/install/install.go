@@ -97,8 +97,6 @@ func newRESTMapper(externalVersions []unversioned.GroupVersion) meta.RESTMapper 
 
 	// these kinds should be excluded from the list of resources
 	ignoredKinds := sets.NewString(
-		"ListOptions",
-		"DeleteOptions",
 		"Status")
 
 	mapper := api.NewDefaultRESTMapper(externalVersions, interfacesFor, importPrefix, ignoredKinds, rootScoped)

@@ -21,6 +21,7 @@ package app
 
 import (
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
@@ -35,6 +36,7 @@ import (
 	genericoptions "k8s.io/kubernetes/pkg/genericapiserver/options"
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/generic"
+	"k8s.io/kubernetes/pkg/controller/framework/informers"
 )
 
 // NewAPIServerCommand creates a *cobra.Command object with default parameters
@@ -55,7 +57,7 @@ func NewAPIServerCommand() *cobra.Command {
 func Run(s *genericoptions.ServerRunOptions) error {
 	genericapiserver.DefaultAndValidateRunOptions(s)
 
-	// TODO: register cluster federation resources here.
+	// TODO: register heapster resources here.
 	resourceConfig := genericapiserver.NewResourceConfig()
 
 	storageGroupsToEncodingVersion, err := s.StorageGroupsToEncodingVersion()
@@ -116,7 +118,11 @@ func Run(s *genericoptions.ServerRunOptions) error {
 	if err != nil {
 		glog.Errorf("Failed to create clientset: %v", err)
 	}
-	admissionController := admission.NewFromPlugins(client, admissionControlPluginNames, s.AdmissionControlConfigFile)
+
+	sharedInformers := informers.NewSharedInformerFactory(client, 10*time.Minute)
+	pluginInitializer := admission.NewPluginInitializer(sharedInformers)
+
+	admissionController, err := admission.NewFromPlugins(client, admissionControlPluginNames, s.AdmissionControlConfigFile, pluginInitializer)
 
 	genericConfig := genericapiserver.NewConfig(s)
 	// TODO: Move the following to generic api server as well.
@@ -139,7 +145,7 @@ func Run(s *genericoptions.ServerRunOptions) error {
 		return err
 	}
 
-	installCoreAPIs(s, m, storageFactory)
+	//installCoreAPIs(s, m, storageFactory)
 
 	m.Run(s)
 	return nil
