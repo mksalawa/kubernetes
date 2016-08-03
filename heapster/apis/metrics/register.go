@@ -14,33 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package core
+package metrics
 
 import (
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/runtime/serializer"
 )
 
-// Scheme is the default instance of runtime.Scheme to which types in the Kubernetes API are already registered.
-var Scheme = runtime.NewScheme()
-
-// Codecs provides access to encoding and decoding for the scheme
-var Codecs = serializer.NewCodecFactory(Scheme)
-
 // GroupName is the group name use in this package
-const GroupName = ""
+const GroupName = "metrics"
 
 // SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = unversioned.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal}
-
-// Unversioned is group version for unversioned API objects
-// TODO: this should be v1 probably
-var Unversioned = unversioned.GroupVersion{Group: "", Version: "v1"}
-
-// ParameterCodec handles versioning of objects that are converted to query parameters.
-var ParameterCodec = runtime.NewParameterCodec(Scheme)
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind
 func Kind(kind string) unversioned.GroupKind {
@@ -52,24 +37,17 @@ func Resource(resource string) unversioned.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
 }
 
+// Adds the list of known types to api.Scheme.
 func AddToScheme(scheme *runtime.Scheme) {
-	if err := Scheme.AddIgnoredConversionType(&unversioned.TypeMeta{}, &unversioned.TypeMeta{}); err != nil {
-		panic(err)
-	}
-	scheme.AddKnownTypes(SchemeGroupVersion,
-		&api.Service{},
-	)
-
-	// Register Unversioned types under their own special group
-	Scheme.AddUnversionedTypes(Unversioned,
-		&unversioned.ExportOptions{},
-		&unversioned.Status{},
-		&unversioned.APIVersions{},
-		&unversioned.APIGroupList{},
-		&unversioned.APIGroup{},
-		&unversioned.APIResourceList{},
-	)
-
-	addDefaultingFuncs(scheme)
-	addConversionFuncs(scheme)
+	addKnownTypes(scheme)
 }
+
+func addKnownTypes(scheme *runtime.Scheme) {
+	scheme.AddKnownTypes(SchemeGroupVersion,
+		&NodeMetrics{},
+		&NodeMetricsList{},
+	)
+}
+
+func (obj *NodeMetrics) GetObjectKind() unversioned.ObjectKind     { return &obj.TypeMeta }
+func (obj *NodeMetricsList) GetObjectKind() unversioned.ObjectKind { return &obj.TypeMeta }

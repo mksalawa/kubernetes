@@ -15,13 +15,13 @@ spec:
     spec:
       containers:
       - name: apiserver
-        image: gcr.io/google.com/magorzata-dev-1362/heapster-apiserver:2c99b08815533e699ac8226ca30f8138
+        image: gcr.io/google.com/magorzata-dev-1362/heapster-apiserver-img:v1
+        imagePullPolicy: Always
         command:
         - /usr/local/bin/heapster-apiserver
         - --etcd-servers=http://localhost:2379
         - --service-cluster-ip-range=10.10.0.0/24
         - --secure-port=443
-#        - --advertise-address={{.HEAPSTER_API_HOST}}
         # TODO: --admission-control values must be set when support is added for each type of control.
         - --token-auth-file=/srv/kubernetes/known-tokens.csv
         ports:

@@ -14,10 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// This is probably not required for now because we are reusing the types
-// in k8s.io/kubernetes/pkg/api. But adding it now as a guard to ensure
-// that others don't stumble on this in the future when they add new
-// types here since adding it now doesn't hurt.
-// +k8s:conversion-gen=k8s.io/kubernetes/federation/apis/core
+// +k8s:deepcopy-gen=package,register
 
-package v1
+package metrics // import "k8s.io/kubernetes/heapster/apis/metrics"

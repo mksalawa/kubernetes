@@ -266,6 +266,14 @@ $(notdir $(abspath $(wildcard plugin/cmd/*/))): generated_files
 $(notdir $(abspath $(wildcard federation/cmd/*/))): generated_files
 	hack/make-rules/build.sh federation/cmd/$@
 
+# Add rules for all directories in heapster/cmd/
+#
+# Example:
+#   make heapster-apiserver
+.PHONY: $(notdir $(abspath $(wildcard heapster/cmd/*/)))
+$(notdir $(abspath $(wildcard heapster/cmd/*/))): generated_files
+	hack/make-rules/build.sh heapster/cmd/$@
+
 # Produce auto-generated files needed for the build.
 #
 # Example:

@@ -37,6 +37,8 @@ import (
 	"k8s.io/kubernetes/pkg/registry/cachesize"
 	"k8s.io/kubernetes/pkg/registry/generic"
 	"k8s.io/kubernetes/pkg/controller/framework/informers"
+	"k8s.io/kubernetes/heapster/apis/metrics"
+	"k8s.io/kubernetes/heapster/apis/metrics/v1alpha1"
 )
 
 // NewAPIServerCommand creates a *cobra.Command object with default parameters
@@ -59,6 +61,9 @@ func Run(s *genericoptions.ServerRunOptions) error {
 
 	// TODO: register heapster resources here.
 	resourceConfig := genericapiserver.NewResourceConfig()
+	resourceConfig.EnableVersions(unversioned.GroupVersion{Group: metrics.GroupName, Version: "v1alpha1"})
+
+	resourceConfig.EnableResources(v1alpha1.SchemeGroupVersion.WithResource("nodemetrics"))
 
 	storageGroupsToEncodingVersion, err := s.StorageGroupsToEncodingVersion()
 	if err != nil {
@@ -145,7 +150,7 @@ func Run(s *genericoptions.ServerRunOptions) error {
 		return err
 	}
 
-	//installCoreAPIs(s, m, storageFactory)
+	installMetricsAPIs(s, m, storageFactory)
 
 	m.Run(s)
 	return nil

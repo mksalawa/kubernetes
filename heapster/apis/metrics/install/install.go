@@ -21,36 +21,36 @@ import (
 
 	"github.com/golang/glog"
 
-	core "k8s.io/kubernetes/heapster/apis/core"
-	core_v1 "k8s.io/kubernetes/heapster/apis/core/v1"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/meta"
 	"k8s.io/kubernetes/pkg/api/unversioned"
-	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apimachinery"
 	"k8s.io/kubernetes/pkg/apimachinery/registered"
-	"k8s.io/kubernetes/pkg/conversion"
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/util/sets"
+	"k8s.io/kubernetes/heapster/apis/metrics"
+	"k8s.io/kubernetes/heapster/apis/metrics/v1alpha1"
+	"k8s.io/kubernetes/pkg/util"
 )
 
-const importPrefix = "k8s.io/kubernetes/heapster/api"
+const importPrefix = "k8s.io/kubernetes/heapster/apis/metrics"
 
 var accessor = meta.NewAccessor()
 
 // availableVersions lists all known external versions for this group from most preferred to least preferred
-var availableVersions = []unversioned.GroupVersion{core_v1.SchemeGroupVersion}
+var availableVersions = []unversioned.GroupVersion{v1alpha1.SchemeGroupVersion}
 
 func init() {
 	registered.RegisterVersions(availableVersions)
 	externalVersions := []unversioned.GroupVersion{}
+	defer util.FlushLogs()
 	for _, v := range availableVersions {
 		if registered.IsAllowedVersion(v) {
 			externalVersions = append(externalVersions, v)
 		}
 	}
 	if len(externalVersions) == 0 {
-		glog.V(4).Infof("No version is registered for group %v", core.GroupName)
+		glog.V(4).Infof("No version is registered for group %v", metrics.GroupName)
 		return
 	}
 
@@ -87,43 +87,36 @@ func enableVersions(externalVersions []unversioned.GroupVersion) error {
 	return nil
 }
 
-// userResources is a group of resources mostly used by a kubectl user
-var userResources = []string{"svc"}
-
 func newRESTMapper(externalVersions []unversioned.GroupVersion) meta.RESTMapper {
 	// the list of kinds that are scoped at the root of the api hierarchy
 	// if a kind is not enumerated here, it is assumed to have a namespace scope
-	rootScoped := sets.NewString()
+	rootScoped := sets.NewString(
+		"NodeMetrics",
+	)
 
-	// these kinds should be excluded from the list of resources
-	ignoredKinds := sets.NewString(
-		"Status")
+	ignoredKinds := sets.NewString()
 
-	mapper := api.NewDefaultRESTMapper(externalVersions, interfacesFor, importPrefix, ignoredKinds, rootScoped)
-	// setup aliases for groups of resources
-	mapper.AddResourceAlias("all", userResources...)
-
-	return mapper
+	return api.NewDefaultRESTMapper(externalVersions, interfacesFor, importPrefix, ignoredKinds, rootScoped)
 }
 
-// InterfacesFor returns the default Codec and ResourceVersioner for a given version
+// interfacesFor returns the default Codec and ResourceVersioner for a given version
 // string, or an error if the version is not known.
 func interfacesFor(version unversioned.GroupVersion) (*meta.VersionInterfaces, error) {
 	switch version {
-	case core_v1.SchemeGroupVersion:
+	case v1alpha1.SchemeGroupVersion:
 		return &meta.VersionInterfaces{
-			ObjectConvertor:  core.Scheme,
+			ObjectConvertor:  api.Scheme,
 			MetadataAccessor: accessor,
 		}, nil
 	default:
-		g, _ := registered.Group(core.GroupName)
+		g, _ := registered.Group(metrics.GroupName)
 		return nil, fmt.Errorf("unsupported storage version: %s (valid: %v)", version, g.GroupVersions)
 	}
 }
 
 func addVersionsToScheme(externalVersions ...unversioned.GroupVersion) {
 	// add the internal version to Scheme
-	core.AddToScheme(core.Scheme)
+	metrics.AddToScheme(api.Scheme)
 	// add the enabled external versions to Scheme
 	for _, v := range externalVersions {
 		if !registered.IsEnabledVersion(v) {
@@ -131,28 +124,8 @@ func addVersionsToScheme(externalVersions ...unversioned.GroupVersion) {
 			continue
 		}
 		switch v {
-		case core_v1.SchemeGroupVersion:
-			core_v1.AddToScheme(core.Scheme)
+		case v1alpha1.SchemeGroupVersion:
+			v1alpha1.AddToScheme(api.Scheme)
 		}
 	}
-
-	// This is a "fast-path" that avoids reflection for common types. It focuses on the objects that are
-	// converted the most in the cluster.
-	// TODO: generate one of these for every external API group - this is to prove the impact
-	core.Scheme.AddGenericConversionFunc(func(objA, objB interface{}, s conversion.Scope) (bool, error) {
-		switch a := objA.(type) {
-		case *v1.Service:
-			switch b := objB.(type) {
-			case *api.Service:
-				return true, v1.Convert_v1_Service_To_api_Service(a, b, s)
-			}
-		case *api.Service:
-			switch b := objB.(type) {
-			case *v1.Service:
-				return true, v1.Convert_api_Service_To_v1_Service(a, b, s)
-			}
-
-		}
-		return false, nil
-	})
 }
